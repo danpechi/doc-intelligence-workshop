@@ -11,9 +11,6 @@ variables:
   industry:
     description: "Industry vertical: gaming | dnb | telco | fins | mfg"
     default: "fins"
-  node_type_id:
-    description: "Cluster node type for setup jobs"
-    default: "i3.xlarge"
 
 targets:
   dev:
@@ -28,64 +25,56 @@ resources:
     setup_job:
       name: "[${bundle.target}] AI Functions Workshop - Setup (${var.industry})"
       description: "Initializes catalog, schema, synthetic data and PDFs for the selected industry vertical"
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
       tasks:
         - task_key: setup_catalog_and_schema
+          environment_key: default
           notebook_task:
             notebook_path: ./setup/00_setup_catalog.py
             base_parameters:
               catalog: "${var.workshop_catalog}"
               schema_prefix: "${var.workshop_schema_prefix}"
               industry: "${var.industry}"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "${var.node_type_id}"
-            num_workers: 1
-            data_security_mode: "SINGLE_USER"
 
         - task_key: generate_synthetic_data
           depends_on:
             - task_key: setup_catalog_and_schema
+          environment_key: default
           notebook_task:
             notebook_path: ./setup/01_generate_data.py
             base_parameters:
               catalog: "${var.workshop_catalog}"
               schema_prefix: "${var.workshop_schema_prefix}"
               industry: "${var.industry}"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "${var.node_type_id}"
-            num_workers: 1
-            data_security_mode: "SINGLE_USER"
 
         - task_key: generate_pdfs
           depends_on:
             - task_key: generate_synthetic_data
+          environment_key: default
           notebook_task:
             notebook_path: ./setup/02_generate_pdfs.py
             base_parameters:
               catalog: "${var.workshop_catalog}"
               schema_prefix: "${var.workshop_schema_prefix}"
               industry: "${var.industry}"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "${var.node_type_id}"
-            num_workers: 1
-            data_security_mode: "SINGLE_USER"
 
     cleanup_job:
       name: "[${bundle.target}] AI Functions Workshop - Cleanup"
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
       tasks:
         - task_key: cleanup
+          environment_key: default
           notebook_task:
             notebook_path: ./setup/99_cleanup.py
             base_parameters:
               catalog: "${var.workshop_catalog}"
               schema_prefix: "${var.workshop_schema_prefix}"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "${var.node_type_id}"
-            num_workers: 1
-            data_security_mode: "SINGLE_USER"
 
   apps:
     ai_functions_workshop_app:
