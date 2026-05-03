@@ -1,0 +1,107 @@
+bundle:
+  name: ai-functions-workshop
+
+variables:
+  workshop_catalog:
+    description: "Unity Catalog catalog name"
+    default: "main"
+  workshop_schema_prefix:
+    description: "Schema prefix for industry schemas"
+    default: "ai_functions_workshop"
+  industry:
+    description: "Industry vertical: gaming | dnb | telco | fins | mfg"
+    default: "fins"
+  node_type_id:
+    description: "Cluster node type for setup jobs"
+    default: "i3.xlarge"
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+  prod:
+    mode: production
+
+resources:
+  jobs:
+    setup_job:
+      name: "[${bundle.target}] AI Functions Workshop - Setup (${var.industry})"
+      description: "Initializes catalog, schema, synthetic data and PDFs for the selected industry vertical"
+      tasks:
+        - task_key: setup_catalog_and_schema
+          notebook_task:
+            notebook_path: ./setup/00_setup_catalog.py
+            base_parameters:
+              catalog: "${var.workshop_catalog}"
+              schema_prefix: "${var.workshop_schema_prefix}"
+              industry: "${var.industry}"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "${var.node_type_id}"
+            num_workers: 1
+            data_security_mode: "SINGLE_USER"
+
+        - task_key: generate_synthetic_data
+          depends_on:
+            - task_key: setup_catalog_and_schema
+          notebook_task:
+            notebook_path: ./setup/01_generate_data.py
+            base_parameters:
+              catalog: "${var.workshop_catalog}"
+              schema_prefix: "${var.workshop_schema_prefix}"
+              industry: "${var.industry}"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "${var.node_type_id}"
+            num_workers: 1
+            data_security_mode: "SINGLE_USER"
+
+        - task_key: generate_pdfs
+          depends_on:
+            - task_key: generate_synthetic_data
+          notebook_task:
+            notebook_path: ./setup/02_generate_pdfs.py
+            base_parameters:
+              catalog: "${var.workshop_catalog}"
+              schema_prefix: "${var.workshop_schema_prefix}"
+              industry: "${var.industry}"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "${var.node_type_id}"
+            num_workers: 1
+            data_security_mode: "SINGLE_USER"
+
+    cleanup_job:
+      name: "[${bundle.target}] AI Functions Workshop - Cleanup"
+      tasks:
+        - task_key: cleanup
+          notebook_task:
+            notebook_path: ./setup/99_cleanup.py
+            base_parameters:
+              catalog: "${var.workshop_catalog}"
+              schema_prefix: "${var.workshop_schema_prefix}"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "${var.node_type_id}"
+            num_workers: 1
+            data_security_mode: "SINGLE_USER"
+
+  apps:
+    ai_functions_workshop_app:
+      name: "ai-functions-workshop"
+      description: "Interactive workshop for Databricks AI Functions: ai_query, ai_classify, ai_extract, ai_parse_document, and semantic matching at scale"
+      source_code_path: .
+      config:
+        command:
+          - uvicorn
+          - app:app
+          - "--host"
+          - "0.0.0.0"
+          - "--port"
+          - "8000"
+        env:
+          - name: WORKSHOP_CATALOG
+            value: "${var.workshop_catalog}"
+          - name: WORKSHOP_SCHEMA_PREFIX
+            value: "${var.workshop_schema_prefix}"
