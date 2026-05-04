@@ -17,7 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.jobs import RunNowResponse
 
 app = FastAPI(title="AI Functions Workshop", docs_url=None, redoc_url=None)
 
@@ -76,11 +75,11 @@ async def trigger_setup(req: SetupRequest):
         job_list.sort(key=lambda j: j.created_time or 0, reverse=True)
         job_id = str(job_list[0].job_id)
 
-    run: RunNowResponse = client.jobs.run_now(
+    waiter = client.jobs.run_now(
         job_id=int(job_id),
         notebook_params={"industry": req.industry},
     )
-    return {"run_id": run.run_id, "job_id": job_id}
+    return {"run_id": waiter.run_id, "job_id": job_id}
 
 
 @app.get("/api/setup/status/{run_id}")
