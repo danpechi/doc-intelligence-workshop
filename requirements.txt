@@ -1,6 +1,4 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
+aiofiles>=23.0.0
 databricks-sdk>=0.38.0
-reportlab>=4.2.0
-fpdf2>=2.8.0
-faker>=30.0.0
