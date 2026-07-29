@@ -239,11 +239,11 @@ if industry == "fins":
             merchant_name_raw,
             canonical_name,
             category,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Does "', merchant_name_raw, '" refer to the merchant "', canonical_name, '"? Answer YES or NO and give a one-sentence reason.'),
-                responseFormat => schema_of_json('{"match_confirmed": false, "confidence": "string", "reason": "string"}')
-            ) AS validation
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"match_confirmed":{"type":"boolean"},"confidence":{"type":"string"},"reason":{"type":"string"}}}}}'
+            ), 'match_confirmed BOOLEAN, confidence STRING, reason STRING') AS validation
         FROM top_matches
         WHERE rnk = 1
         LIMIT 10
@@ -260,10 +260,10 @@ elif industry == "telco":
         SELECT
             call_id,
             title AS recommended_playbook,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Does this call transcript require this resolution playbook? Transcript: ', transcript, ' | Playbook: ', steps),
-                responseFormat => schema_of_json('{"playbook_relevant": false, "confidence_level": "string", "alternative_suggestion": "string"}')
-            ) AS validation
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"playbook_relevant":{"type":"boolean"},"confidence_level":{"type":"string"},"alternative_suggestion":{"type":"string"}}}}}'
+            ), 'playbook_relevant BOOLEAN, confidence_level STRING, alternative_suggestion STRING') AS validation
         FROM top_playbooks WHERE rnk = 1 LIMIT 10
     """))

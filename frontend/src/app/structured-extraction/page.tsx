@@ -4,6 +4,7 @@ import { useIndustry } from "@/lib/useIndustry";
 import WorkshopStep from "@/components/WorkshopStep";
 import CodeBlock from "@/components/CodeBlock";
 import InfoBox from "@/components/InfoBox";
+import { responseFormat, ddl } from "@/lib/aiResponseFormat";
 
 const EXAMPLES: Record<string, { table: string; textCol: string; schema: string; queryStep: string }> = {
   fins: {
@@ -147,20 +148,21 @@ LIMIT 3;`}
       </WorkshopStep>
 
       <WorkshopStep number={3} title="With responseFormat — typed STRUCT output">
-        <InfoBox type="tip" title="Use schema_of_json()">
-          Pass a JSON string to <code>schema_of_json()</code> to define the output structure.
-          The model will always return fields with the correct types.
+        <InfoBox type="tip" title="Use a json_schema responseFormat">
+          Pass a <code>json_schema</code> string to <code>responseFormat</code> to define the output structure.
+          The model returns JSON matching that schema; wrap the call in <code>from_json(...)</code> to
+          get a typed STRUCT you can query field-by-field.
         </InfoBox>
         <CodeBlock
           language="sql"
           title="ai_query with responseFormat — structured extraction"
           code={`SELECT
     *,
-    ai_query(
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Extract key details from this ${industry} record: ', ${ex.textCol}),
-        responseFormat => schema_of_json('${ex.schema}')
-    ) AS extracted
+        responseFormat => '${responseFormat(ex.schema)}'
+    ), '${ddl(ex.schema)}') AS extracted
 FROM ${ex.table}
 LIMIT 20;`}
         />
@@ -180,11 +182,11 @@ LIMIT 20;`}
           code={`WITH extracted AS (
     SELECT
         *,
-        ai_query(
+        from_json(ai_query(
             'databricks-meta-llama-3-3-70b-instruct',
             CONCAT('Extract key details: ', ${ex.textCol}),
-            responseFormat => schema_of_json('${ex.schema}')
-        ) AS info
+            responseFormat => '${responseFormat(ex.schema)}'
+        ), '${ddl(ex.schema)}') AS info
     FROM ${ex.table}
     LIMIT 100
 )
@@ -199,11 +201,11 @@ ${ex.queryStep};`}
           code={`CREATE OR REPLACE TABLE ${schema}.extracted_${ex.table} AS
 SELECT
     *,
-    ai_query(
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Extract structured details: ', ${ex.textCol}),
-        responseFormat => schema_of_json('${ex.schema}')
-    ) AS extracted,
+        responseFormat => '${responseFormat(ex.schema)}'
+    ), '${ddl(ex.schema)}') AS extracted,
     current_timestamp() AS ai_processed_at
 FROM ${ex.table};
 

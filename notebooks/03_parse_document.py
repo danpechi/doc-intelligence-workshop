@@ -82,7 +82,7 @@ display(spark.sql(f"""
 display(spark.sql(f"""
     SELECT
         path,
-        ai_parse_document(content) AS parsed_text
+        CAST(ai_parse_document(content) AS STRING) AS parsed_text
     FROM read_files(
         '{volume_path}',
         format => 'binaryFile',
@@ -102,23 +102,15 @@ display(spark.sql(f"""
 if industry == "fins":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-            ai_query(
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT(
                     'Extract the following from this financial product sheet: ',
-                    ai_parse_document(content)
+                    CAST(ai_parse_document(content) AS STRING)
                 ),
-                responseFormat => schema_of_json('{{
-                    "product_name": "string",
-                    "product_id": "string",
-                    "apr_low": 0.0,
-                    "apr_high": 0.0,
-                    "min_income_usd": 0,
-                    "max_amount_usd": 0,
-                    "key_benefit": "string"
-                }}')
-            ) AS structured_product
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"product_name":{{"type":"string"}},"product_id":{{"type":"string"}},"apr_low":{{"type":"number"}},"apr_high":{{"type":"number"}},"min_income_usd":{{"type":"integer"}},"max_amount_usd":{{"type":"integer"}},"key_benefit":{{"type":"string"}}}}}}}}}}'
+            ), 'product_name STRING, product_id STRING, apr_low DOUBLE, apr_high DOUBLE, min_income_usd BIGINT, max_amount_usd BIGINT, key_benefit STRING') AS structured_product
         FROM read_files(
             '{volume_path}',
             format => 'binaryFile',
@@ -129,22 +121,15 @@ if industry == "fins":
 elif industry == "gaming":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-            ai_query(
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT(
                     'Analyze this player ban appeal document: ',
-                    ai_parse_document(content)
+                    CAST(ai_parse_document(content) AS STRING)
                 ),
-                responseFormat => schema_of_json('{{
-                    "player_id": "string",
-                    "ban_reason": "string",
-                    "account_age_years": 0,
-                    "appeal_credibility": "string",
-                    "recommended_decision": "string",
-                    "evidence_provided": false
-                }}')
-            ) AS appeal_analysis
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"player_id":{{"type":"string"}},"ban_reason":{{"type":"string"}},"account_age_years":{{"type":"integer"}},"appeal_credibility":{{"type":"string"}},"recommended_decision":{{"type":"string"}},"evidence_provided":{{"type":"boolean"}}}}}}}}}}'
+            ), 'player_id STRING, ban_reason STRING, account_age_years BIGINT, appeal_credibility STRING, recommended_decision STRING, evidence_provided BOOLEAN') AS appeal_analysis
         FROM read_files(
             '{volume_path}',
             format => 'binaryFile',
@@ -155,23 +140,15 @@ elif industry == "gaming":
 elif industry == "dnb":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-            ai_query(
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT(
                     'Extract ICP scoring factors from this company profile: ',
-                    ai_parse_document(content)
+                    CAST(ai_parse_document(content) AS STRING)
                 ),
-                responseFormat => schema_of_json('{{
-                    "company_name": "string",
-                    "industry_sector": "string",
-                    "employee_count": 0,
-                    "funding_stage": "string",
-                    "data_maturity": "string",
-                    "databricks_fit_score": 0,
-                    "recommended_outreach_angle": "string"
-                }}')
-            ) AS icp_score
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"company_name":{{"type":"string"}},"industry_sector":{{"type":"string"}},"employee_count":{{"type":"integer"}},"funding_stage":{{"type":"string"}},"data_maturity":{{"type":"string"}},"databricks_fit_score":{{"type":"integer"}},"recommended_outreach_angle":{{"type":"string"}}}}}}}}}}'
+            ), 'company_name STRING, industry_sector STRING, employee_count BIGINT, funding_stage STRING, data_maturity STRING, databricks_fit_score BIGINT, recommended_outreach_angle STRING') AS icp_score
         FROM read_files(
             '{volume_path}',
             format => 'binaryFile',
@@ -182,23 +159,15 @@ elif industry == "dnb":
 elif industry == "telco":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-            ai_query(
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT(
                     'Analyze this customer satisfaction survey: ',
-                    ai_parse_document(content)
+                    CAST(ai_parse_document(content) AS STRING)
                 ),
-                responseFormat => schema_of_json('{{
-                    "customer_id": "string",
-                    "nps_score": 0,
-                    "nps_category": "string",
-                    "issue_type": "string",
-                    "sentiment_summary": "string",
-                    "follow_up_required": false,
-                    "key_verbatim_theme": "string"
-                }}')
-            ) AS survey_analysis
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"customer_id":{{"type":"string"}},"nps_score":{{"type":"integer"}},"nps_category":{{"type":"string"}},"issue_type":{{"type":"string"}},"sentiment_summary":{{"type":"string"}},"follow_up_required":{{"type":"boolean"}},"key_verbatim_theme":{{"type":"string"}}}}}}}}}}'
+            ), 'customer_id STRING, nps_score BIGINT, nps_category STRING, issue_type STRING, sentiment_summary STRING, follow_up_required BOOLEAN, key_verbatim_theme STRING') AS survey_analysis
         FROM read_files(
             '{volume_path}',
             format => 'binaryFile',
@@ -209,25 +178,15 @@ elif industry == "telco":
 elif industry == "mfg":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-            ai_query(
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT(
                     'Extract root cause analysis from this quality inspection report: ',
-                    ai_parse_document(content)
+                    CAST(ai_parse_document(content) AS STRING)
                 ),
-                responseFormat => schema_of_json('{{
-                    "report_id": "string",
-                    "failure_mode": "string",
-                    "failure_category": "string",
-                    "severity": "string",
-                    "component_batch_id": "string",
-                    "root_cause": "string",
-                    "supplier_involved": false,
-                    "corrective_action": "string",
-                    "downtime_hours": 0.0
-                }}')
-            ) AS rca_result
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"report_id":{{"type":"string"}},"failure_mode":{{"type":"string"}},"failure_category":{{"type":"string"}},"severity":{{"type":"string"}},"component_batch_id":{{"type":"string"}},"root_cause":{{"type":"string"}},"supplier_involved":{{"type":"boolean"}},"corrective_action":{{"type":"string"}},"downtime_hours":{{"type":"number"}}}}}}}}}}'
+            ), 'report_id STRING, failure_mode STRING, failure_category STRING, severity STRING, component_batch_id STRING, root_cause STRING, supplier_involved BOOLEAN, corrective_action STRING, downtime_hours DOUBLE') AS rca_result
         FROM read_files(
             '{volume_path}',
             format => 'binaryFile',
@@ -244,9 +203,9 @@ elif industry == "mfg":
 if industry == "gaming":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('grant_appeal', 'deny_appeal', 'escalate_for_review', 'insufficient_evidence')
             ) AS appeal_decision
         FROM read_files(
@@ -259,13 +218,13 @@ if industry == "gaming":
 elif industry == "mfg":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('critical_stop_production', 'major_schedule_maintenance', 'minor_monitor_only', 'informational')
             ) AS severity_action,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('supplier_quality_issue', 'operator_error', 'design_defect', 'maintenance_gap', 'environmental_factor')
             ) AS root_cause_category
         FROM read_files(
@@ -278,13 +237,13 @@ elif industry == "mfg":
 elif industry == "telco":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('promoter', 'passive', 'detractor')
             ) AS nps_category,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('billing_issue', 'technical_problem', 'service_quality', 'plan_related', 'other')
             ) AS issue_category
         FROM read_files(
@@ -297,9 +256,9 @@ elif industry == "telco":
 elif industry == "dnb":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('hot_lead', 'warm_lead', 'cold_lead', 'not_qualified')
             ) AS lead_quality
         FROM read_files(
@@ -312,9 +271,9 @@ elif industry == "dnb":
 elif industry == "fins":
     display(spark.sql(f"""
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('secured_loan', 'unsecured_loan', 'premium_credit_card', 'standard_credit_card', 'secured_card')
             ) AS product_category
         FROM read_files(
@@ -336,15 +295,15 @@ if industry == "mfg":
     spark.sql(f"""
         CREATE OR REPLACE TABLE {parsed_results_table} AS
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             path,
-            ai_parse_document(content) AS raw_text,
+            CAST(ai_parse_document(content) AS STRING) AS raw_text,
             ai_classify(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('critical_stop_production', 'major_schedule_maintenance', 'minor_monitor_only')
             ) AS severity_action,
             ai_extract(
-                ai_parse_document(content),
+                CAST(ai_parse_document(content) AS STRING),
                 ARRAY('component_batch_id', 'failure_mode', 'root_cause', 'downtime_hours')
             ) AS extracted_entities,
             NOW() AS processed_at
@@ -358,9 +317,9 @@ else:
     spark.sql(f"""
         CREATE OR REPLACE TABLE {parsed_results_table} AS
         SELECT
-            REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+            REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
             path,
-            ai_parse_document(content) AS raw_text,
+            CAST(ai_parse_document(content) AS STRING) AS raw_text,
             NOW() AS processed_at
         FROM read_files(
             '{volume_path}',

@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Lab 1: Structured Extraction with `ai_query`
 # MAGIC
-# MAGIC **AI Function:** `ai_query(endpoint, prompt, responseFormat => schema_of_json(...))`
+# MAGIC **AI Function:** `ai_query(endpoint, prompt, responseFormat => '<json_schema>')`
 # MAGIC
 # MAGIC The core challenge with unstructured text is that it is not directly queryable in SQL.
 # MAGIC `ai_query` with `responseFormat` solves this by instructing the model to return
@@ -17,11 +17,11 @@
 # MAGIC SELECT ai_query('databricks-meta-llama-3-3-70b-instruct', 'Extract the APR from: ...') AS raw_text
 # MAGIC
 # MAGIC -- WITH responseFormat: returns a typed STRUCT you can query with SQL
-# MAGIC SELECT ai_query(
+# MAGIC SELECT from_json(ai_query(
 # MAGIC   'databricks-meta-llama-3-3-70b-instruct',
 # MAGIC   CONCAT('Extract product details from: ', document_text),
-# MAGIC   responseFormat => schema_of_json('{"product_name":"str","apr_low":0.0,"apr_high":0.0,"min_income":0}')
-# MAGIC ).apr_low AS apr_low
+# MAGIC   responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"product_name":{"type":"string"},"apr_low":{"type":"number"},"apr_high":{"type":"number"},"min_income":{"type":"integer"}}}}}'
+# MAGIC ), 'product_name STRING, apr_low DOUBLE, apr_high DOUBLE, min_income BIGINT').apr_low AS apr_low
 # MAGIC ```
 
 # COMMAND ----------
@@ -139,19 +139,11 @@ if industry == "fins":
         SELECT
             product_id,
             product_name,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Extract financial product details from this description: ', document_text),
-                responseFormat => schema_of_json('{
-                    "product_name": "string",
-                    "product_type": "string",
-                    "apr_low": 0.0,
-                    "apr_high": 0.0,
-                    "min_income_usd": 0,
-                    "max_amount_usd": 0,
-                    "key_benefit": "string"
-                }')
-            ) AS extracted
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"product_name":{"type":"string"},"product_type":{"type":"string"},"apr_low":{"type":"number"},"apr_high":{"type":"number"},"min_income_usd":{"type":"integer"},"max_amount_usd":{"type":"integer"},"key_benefit":{"type":"string"}}}}}'
+            ), 'product_name STRING, product_type STRING, apr_low DOUBLE, apr_high DOUBLE, min_income_usd BIGINT, max_amount_usd BIGINT, key_benefit STRING') AS extracted
         FROM product_documents
     """))
 
@@ -160,17 +152,11 @@ elif industry == "gaming":
         SELECT
             report_id,
             incident_type,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Analyze this player conduct report and extract structured details: ', description),
-                responseFormat => schema_of_json('{
-                    "incident_category": "string",
-                    "severity_level": "string",
-                    "repeated_offense": false,
-                    "involves_personal_threat": false,
-                    "recommended_action": "string"
-                }')
-            ) AS extracted
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"incident_category":{"type":"string"},"severity_level":{"type":"string"},"repeated_offense":{"type":"boolean"},"involves_personal_threat":{"type":"boolean"},"recommended_action":{"type":"string"}}}}}'
+            ), 'incident_category STRING, severity_level STRING, repeated_offense BOOLEAN, involves_personal_threat BOOLEAN, recommended_action STRING') AS extracted
         FROM player_reports
     """))
 
@@ -179,18 +165,11 @@ elif industry == "dnb":
         SELECT
             prospect_id,
             company_name,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Extract structured business intelligence from this company description: ', description),
-                responseFormat => schema_of_json('{
-                    "company_type": "string",
-                    "employee_range": "string",
-                    "funding_stage": "string",
-                    "current_tech_stack": "string",
-                    "primary_pain_point": "string",
-                    "databricks_fit_score": 0
-                }')
-            ) AS extracted
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"company_type":{"type":"string"},"employee_range":{"type":"string"},"funding_stage":{"type":"string"},"current_tech_stack":{"type":"string"},"primary_pain_point":{"type":"string"},"databricks_fit_score":{"type":"integer"}}}}}'
+            ), 'company_type STRING, employee_range STRING, funding_stage STRING, current_tech_stack STRING, primary_pain_point STRING, databricks_fit_score BIGINT') AS extracted
         FROM prospect_companies
         LIMIT 20
     """))
@@ -200,18 +179,11 @@ elif industry == "telco":
         SELECT
             call_id,
             agent_id,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Extract structured information from this call transcript: ', transcript),
-                responseFormat => schema_of_json('{
-                    "issue_type": "string",
-                    "customer_sentiment": "string",
-                    "churn_risk": "string",
-                    "resolution_achieved": false,
-                    "follow_up_required": false,
-                    "key_complaint": "string"
-                }')
-            ) AS extracted
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"issue_type":{"type":"string"},"customer_sentiment":{"type":"string"},"churn_risk":{"type":"string"},"resolution_achieved":{"type":"boolean"},"follow_up_required":{"type":"boolean"},"key_complaint":{"type":"string"}}}}}'
+            ), 'issue_type STRING, customer_sentiment STRING, churn_risk STRING, resolution_achieved BOOLEAN, follow_up_required BOOLEAN, key_complaint STRING') AS extracted
         FROM customer_calls
         LIMIT 20
     """))
@@ -221,19 +193,11 @@ elif industry == "mfg":
         SELECT
             log_id,
             line_id,
-            ai_query(
+            from_json(ai_query(
                 'databricks-meta-llama-3-3-70b-instruct',
                 CONCAT('Extract root cause analysis details from this maintenance log: ', technician_notes),
-                responseFormat => schema_of_json('{
-                    "failure_mode": "string",
-                    "failure_category": "string",
-                    "severity": "string",
-                    "component_batch_id": "string",
-                    "root_cause_summary": "string",
-                    "supplier_involved": false,
-                    "safety_risk": false
-                }')
-            ) AS extracted
+                responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"failure_mode":{"type":"string"},"failure_category":{"type":"string"},"severity":{"type":"string"},"component_batch_id":{"type":"string"},"root_cause_summary":{"type":"string"},"supplier_involved":{"type":"boolean"},"safety_risk":{"type":"boolean"}}}}}'
+            ), 'failure_mode STRING, failure_category STRING, severity STRING, component_batch_id STRING, root_cause_summary STRING, supplier_involved BOOLEAN, safety_risk BOOLEAN') AS extracted
         FROM maintenance_logs
         LIMIT 20
     """))
@@ -249,11 +213,11 @@ if industry == "fins":
         WITH extracted AS (
             SELECT
                 product_id, product_name,
-                ai_query(
+                from_json(ai_query(
                     'databricks-meta-llama-3-3-70b-instruct',
                     CONCAT('Extract financial product details: ', document_text),
-                    responseFormat => schema_of_json('{"product_type":"string","apr_low":0.0,"apr_high":0.0,"min_income_usd":0}')
-                ) AS info
+                    responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"product_type":{"type":"string"},"apr_low":{"type":"number"},"apr_high":{"type":"number"},"min_income_usd":{"type":"integer"}}}}}'
+                ), 'product_type STRING, apr_low DOUBLE, apr_high DOUBLE, min_income_usd BIGINT') AS info
             FROM product_documents
         )
         SELECT
@@ -272,11 +236,11 @@ elif industry == "mfg":
         WITH extracted AS (
             SELECT
                 log_id, line_id, downtime_hours,
-                ai_query(
+                from_json(ai_query(
                     'databricks-meta-llama-3-3-70b-instruct',
                     CONCAT('Extract root cause details: ', technician_notes),
-                    responseFormat => schema_of_json('{"failure_category":"string","severity":"string","supplier_involved":false}')
-                ) AS info
+                    responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"failure_category":{"type":"string"},"severity":{"type":"string"},"supplier_involved":{"type":"boolean"}}}}}'
+                ), 'failure_category STRING, severity STRING, supplier_involved BOOLEAN') AS info
             FROM maintenance_logs
             LIMIT 50
         )
@@ -296,11 +260,11 @@ elif industry == "telco":
         WITH extracted AS (
             SELECT
                 call_id,
-                ai_query(
+                from_json(ai_query(
                     'databricks-meta-llama-3-3-70b-instruct',
                     CONCAT('Classify this call transcript: ', transcript),
-                    responseFormat => schema_of_json('{"issue_type":"string","churn_risk":"string","resolution_achieved":false}')
-                ) AS info
+                    responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"issue_type":{"type":"string"},"churn_risk":{"type":"string"},"resolution_achieved":{"type":"boolean"}}}}}'
+                ), 'issue_type STRING, churn_risk STRING, resolution_achieved BOOLEAN') AS info
             FROM customer_calls
             LIMIT 50
         )
@@ -319,11 +283,11 @@ elif industry == "gaming":
         WITH extracted AS (
             SELECT
                 report_id,
-                ai_query(
+                from_json(ai_query(
                     'databricks-meta-llama-3-3-70b-instruct',
                     CONCAT('Analyze this player report: ', description),
-                    responseFormat => schema_of_json('{"incident_category":"string","severity_level":"string","recommended_action":"string"}')
-                ) AS info
+                    responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"incident_category":{"type":"string"},"severity_level":{"type":"string"},"recommended_action":{"type":"string"}}}}}'
+                ), 'incident_category STRING, severity_level STRING, recommended_action STRING') AS info
             FROM player_reports
         )
         SELECT
@@ -341,11 +305,11 @@ elif industry == "dnb":
         WITH extracted AS (
             SELECT
                 prospect_id, company_name,
-                ai_query(
+                from_json(ai_query(
                     'databricks-meta-llama-3-3-70b-instruct',
                     CONCAT('Score this prospect for Databricks: ', description),
-                    responseFormat => schema_of_json('{"company_type":"string","funding_stage":"string","databricks_fit_score":0}')
-                ) AS info
+                    responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"company_type":{"type":"string"},"funding_stage":{"type":"string"},"databricks_fit_score":{"type":"integer"}}}}}'
+                ), 'company_type STRING, funding_stage STRING, databricks_fit_score BIGINT') AS info
             FROM prospect_companies
             LIMIT 30
         )
