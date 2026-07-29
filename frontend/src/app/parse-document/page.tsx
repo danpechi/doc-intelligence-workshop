@@ -8,113 +8,113 @@ import InfoBox from "@/components/InfoBox";
 const DOWNSTREAM_EXAMPLES: Record<string, { classify: string; extract: string; save: string }> = {
   fins: {
     classify: `ai_classify(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('secured_loan','unsecured_loan','premium_credit_card','standard_credit_card','secured_card')
 ) AS product_category`,
     extract: `ai_extract(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('product_name','apr_range','min_income','max_amount')
 ) AS terms`,
     save: `CREATE OR REPLACE TABLE main.ai_functions_workshop_fins.parsed_product_sheets AS
 SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS raw_text,
-    ai_classify(ai_parse_document(content), ARRAY('secured_loan','unsecured_loan','credit_card')) AS product_type,
-    ai_query(
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS raw_text,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('secured_loan','unsecured_loan','credit_card')) AS product_type,
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
-        CONCAT('Extract product details: ', ai_parse_document(content)),
-        responseFormat => schema_of_json('{"product_name":"string","apr_low":0.0,"apr_high":0.0,"min_income_usd":0}')
-    ) AS structured,
+        CONCAT('Extract product details: ', CAST(ai_parse_document(content) AS STRING)),
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"product_name":{"type":"string"},"apr_low":{"type":"number"},"apr_high":{"type":"number"},"min_income_usd":{"type":"integer"}}}}}'
+    ), 'product_name STRING, apr_low DOUBLE, apr_high DOUBLE, min_income_usd BIGINT') AS structured,
     current_timestamp() AS processed_at
 FROM read_files('/Volumes/main/ai_functions_workshop_fins/documents/', format => 'binaryFile', pathGlobFilter => '*.pdf');`,
   },
   gaming: {
     classify: `ai_classify(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('grant_appeal','deny_appeal','escalate_for_review','insufficient_evidence')
 ) AS appeal_decision`,
     extract: `ai_extract(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('player_id','ban_reason','account_age','supporting_evidence')
 ) AS appeal_fields`,
     save: `CREATE OR REPLACE TABLE main.ai_functions_workshop_gaming.parsed_appeals AS
 SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS raw_text,
-    ai_classify(ai_parse_document(content), ARRAY('grant_appeal','deny_appeal','escalate_for_review')) AS decision,
-    ai_query(
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS raw_text,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('grant_appeal','deny_appeal','escalate_for_review')) AS decision,
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
-        CONCAT('Analyze this ban appeal: ', ai_parse_document(content)),
-        responseFormat => schema_of_json('{"player_id":"string","ban_reason":"string","appeal_credibility":"string","recommended_decision":"string"}')
-    ) AS analysis,
+        CONCAT('Analyze this ban appeal: ', CAST(ai_parse_document(content) AS STRING)),
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"player_id":{"type":"string"},"ban_reason":{"type":"string"},"appeal_credibility":{"type":"string"},"recommended_decision":{"type":"string"}}}}}'
+    ), 'player_id STRING, ban_reason STRING, appeal_credibility STRING, recommended_decision STRING') AS analysis,
     current_timestamp() AS processed_at
 FROM read_files('/Volumes/main/ai_functions_workshop_gaming/documents/', format => 'binaryFile', pathGlobFilter => '*.pdf');`,
   },
   dnb: {
     classify: `ai_classify(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('hot_lead','warm_lead','cold_lead','not_qualified')
 ) AS lead_quality`,
     extract: `ai_extract(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('company_name','industry_sector','employee_count','primary_pain_point')
 ) AS company_fields`,
     save: `CREATE OR REPLACE TABLE main.ai_functions_workshop_dnb.parsed_prospects AS
 SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS raw_text,
-    ai_classify(ai_parse_document(content), ARRAY('hot_lead','warm_lead','cold_lead')) AS lead_quality,
-    ai_query(
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS raw_text,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('hot_lead','warm_lead','cold_lead')) AS lead_quality,
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
-        CONCAT('Score this prospect for Databricks fit: ', ai_parse_document(content)),
-        responseFormat => schema_of_json('{"company_name":"string","funding_stage":"string","databricks_fit_score":0,"recommended_outreach_angle":"string"}')
-    ) AS icp_score,
+        CONCAT('Score this prospect for Databricks fit: ', CAST(ai_parse_document(content) AS STRING)),
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"company_name":{"type":"string"},"funding_stage":{"type":"string"},"databricks_fit_score":{"type":"integer"},"recommended_outreach_angle":{"type":"string"}}}}}'
+    ), 'company_name STRING, funding_stage STRING, databricks_fit_score BIGINT, recommended_outreach_angle STRING') AS icp_score,
     current_timestamp() AS processed_at
 FROM read_files('/Volumes/main/ai_functions_workshop_dnb/documents/', format => 'binaryFile', pathGlobFilter => '*.pdf');`,
   },
   telco: {
     classify: `ai_classify(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('promoter','passive','detractor')
 ) AS nps_category`,
     extract: `ai_extract(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('customer_id','nps_score','issue_type','agent_id')
 ) AS survey_fields`,
     save: `CREATE OR REPLACE TABLE main.ai_functions_workshop_telco.parsed_surveys AS
 SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS raw_text,
-    ai_classify(ai_parse_document(content), ARRAY('promoter','passive','detractor')) AS nps_label,
-    ai_classify(ai_parse_document(content), ARRAY('billing_issue','technical_problem','service_quality','other')) AS issue_type,
-    ai_query(
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS raw_text,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('promoter','passive','detractor')) AS nps_label,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('billing_issue','technical_problem','service_quality','other')) AS issue_type,
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
-        CONCAT('Analyze this customer satisfaction survey: ', ai_parse_document(content)),
-        responseFormat => schema_of_json('{"customer_id":"string","nps_score":0,"follow_up_required":false,"key_verbatim_theme":"string"}')
-    ) AS survey_analysis,
+        CONCAT('Analyze this customer satisfaction survey: ', CAST(ai_parse_document(content) AS STRING)),
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"customer_id":{"type":"string"},"nps_score":{"type":"integer"},"follow_up_required":{"type":"boolean"},"key_verbatim_theme":{"type":"string"}}}}}'
+    ), 'customer_id STRING, nps_score BIGINT, follow_up_required BOOLEAN, key_verbatim_theme STRING') AS survey_analysis,
     current_timestamp() AS processed_at
 FROM read_files('/Volumes/main/ai_functions_workshop_telco/documents/', format => 'binaryFile', pathGlobFilter => '*.pdf');`,
   },
   mfg: {
     classify: `ai_classify(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('critical_stop_production','major_schedule_maintenance','minor_monitor_only','informational')
 ) AS severity_action`,
     extract: `ai_extract(
-    ai_parse_document(content),
+    CAST(ai_parse_document(content) AS STRING),
     ARRAY('component_batch_id','failure_mode','supplier_name','downtime_hours')
 ) AS report_fields`,
     save: `CREATE OR REPLACE TABLE main.ai_functions_workshop_mfg.parsed_inspection_reports AS
 SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS raw_text,
-    ai_classify(ai_parse_document(content), ARRAY('critical_stop_production','major_schedule_maintenance','minor_monitor_only')) AS severity_action,
-    ai_classify(ai_parse_document(content), ARRAY('supplier_quality_issue','operator_error','design_defect','maintenance_gap')) AS root_cause_category,
-    ai_query(
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS raw_text,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('critical_stop_production','major_schedule_maintenance','minor_monitor_only')) AS severity_action,
+    ai_classify(CAST(ai_parse_document(content) AS STRING), ARRAY('supplier_quality_issue','operator_error','design_defect','maintenance_gap')) AS root_cause_category,
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
-        CONCAT('Extract RCA from this inspection report: ', ai_parse_document(content)),
-        responseFormat => schema_of_json('{"failure_mode":"string","severity":"string","component_batch_id":"string","root_cause":"string","supplier_involved":false,"downtime_hours":0.0}')
-    ) AS rca,
+        CONCAT('Extract RCA from this inspection report: ', CAST(ai_parse_document(content) AS STRING)),
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"failure_mode":{"type":"string"},"severity":{"type":"string"},"component_batch_id":{"type":"string"},"root_cause":{"type":"string"},"supplier_involved":{"type":"boolean"},"downtime_hours":{"type":"number"}}}}}'
+    ), 'failure_mode STRING, severity STRING, component_batch_id STRING, root_cause STRING, supplier_involved BOOLEAN, downtime_hours DOUBLE') AS rca,
     current_timestamp() AS processed_at
 FROM read_files('/Volumes/main/ai_functions_workshop_mfg/documents/', format => 'binaryFile', pathGlobFilter => '*.pdf');`,
   },
@@ -193,7 +193,7 @@ export default function ParseDocumentPage() {
           title="List PDF files in the volume"
           code={`SELECT
     path,
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
     ROUND(length / 1024.0, 1)     AS size_kb,
     modificationTime
 FROM read_files(
@@ -221,8 +221,8 @@ ORDER BY modificationTime DESC;`}
           language="sql"
           title="ai_parse_document — extract text from PDFs"
           code={`SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
-    ai_parse_document(content) AS parsed_text  -- content is the binary column from read_files
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
+    CAST(ai_parse_document(content) AS STRING) AS parsed_text  -- content is the binary column from read_files
 FROM read_files(
     '${volumePath}',
     format => 'binaryFile',
@@ -241,7 +241,7 @@ LIMIT 3;`}
           language="sql"
           title={`Classify all ${config.name} PDFs`}
           code={`SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
     ${ex.classify}
 FROM read_files(
     '${volumePath}',
@@ -256,7 +256,7 @@ FROM read_files(
           language="sql"
           title={`Extract entities from ${config.name} PDFs`}
           code={`SELECT
-    REGEXP_EXTRACT(path, '[^/]+$') AS filename,
+    REGEXP_EXTRACT(path, '[^/]+$', 0) AS filename,
     ${ex.extract}
 FROM read_files(
     '${volumePath}',

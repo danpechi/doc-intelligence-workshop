@@ -229,11 +229,11 @@ def bronze_documents():
 def silver_enriched_mfg():
     return dlt.read_stream("silver_parsed").selectExpr(
         "path", "filename", "parsed_at",
-        """ai_query(
+        """from_json(ai_query(
             'databricks-meta-llama-3-3-70b-instruct',
             CONCAT('Extract RCA from: ', parsed_text),
-            responseFormat => schema_of_json('{"failure_mode":"string","severity":"string","downtime_hours":0.0}')
-        ) AS extracted""",
+            responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"failure_mode":{"type":"string"},"severity":{"type":"string"},"downtime_hours":{"type":"number"}}}}}'
+        ), 'failure_mode STRING, severity STRING, downtime_hours DOUBLE') AS extracted""",
         "ai_classify(parsed_text, ARRAY('critical','major','minor')) AS severity_action",
     )`}
         />

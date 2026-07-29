@@ -57,11 +57,11 @@ WITH top_matches AS (
 )
 SELECT
     transaction_id, merchant_name_raw, canonical_name, category,
-    ai_query(
+    from_json(ai_query(
         'databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Does "', merchant_name_raw, '" refer to the merchant "', canonical_name, '"? Answer YES or NO.'),
-        responseFormat => schema_of_json('{"match_confirmed": false, "confidence": "string", "reason": "string"}')
-    ) AS validation
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"match_confirmed":{"type":"boolean"},"confidence":{"type":"string"},"reason":{"type":"string"}}}}}'
+    ), 'match_confirmed BOOLEAN, confidence STRING, reason STRING') AS validation
 FROM top_matches
 WHERE rnk = 1
 LIMIT 10;`,
@@ -103,10 +103,10 @@ top AS (SELECT r.report_id, r.description, p.id, p.def,
         ROW_NUMBER() OVER (PARTITION BY r.report_id ORDER BY ai_similarity(r.description, p.def) DESC) AS rnk
         FROM player_reports r CROSS JOIN policies p LIMIT 200)
 SELECT report_id, id AS policy_matched,
-       ai_query('databricks-meta-llama-3-3-70b-instruct',
+       from_json(ai_query('databricks-meta-llama-3-3-70b-instruct',
          CONCAT('Does this incident violate this policy? Incident: ', description, ' | Policy: ', def),
-         responseFormat => schema_of_json('{"policy_violated":false,"confidence":"string","recommended_action":"string"}')
-       ) AS validation
+         responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"policy_violated":{"type":"boolean"},"confidence":{"type":"string"},"recommended_action":{"type":"string"}}}}}'
+       ), 'policy_violated BOOLEAN, confidence STRING, recommended_action STRING') AS validation
 FROM top WHERE rnk = 1 LIMIT 10;`,
   },
   dnb: {
@@ -137,10 +137,10 @@ ORDER BY icp_fit_score DESC LIMIT 30;`,
          ROW_NUMBER() OVER (PARTITION BY p.prospect_id ORDER BY ai_similarity(p.description, i.description) DESC) AS rnk
          FROM prospect_companies p CROSS JOIN icp_profiles i LIMIT 300)
 SELECT prospect_id, company_name, name AS best_icp,
-    ai_query('databricks-meta-llama-3-3-70b-instruct',
+    from_json(ai_query('databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Is this company a fit for this ICP? Company: ', description, ' | ICP: ', icp_desc),
-        responseFormat => schema_of_json('{"is_fit":false,"fit_reason":"string","recommended_email_angle":"string"}')
-    ) AS icp_validation
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"is_fit":{"type":"boolean"},"fit_reason":{"type":"string"},"recommended_email_angle":{"type":"string"}}}}}'
+    ), 'is_fit BOOLEAN, fit_reason STRING, recommended_email_angle STRING') AS icp_validation
 FROM top WHERE rnk = 1 LIMIT 10;`,
   },
   telco: {
@@ -171,10 +171,10 @@ ORDER BY relevance_score DESC LIMIT 30;`,
          ROW_NUMBER() OVER (PARTITION BY c.call_id ORDER BY ai_similarity(c.transcript, p.steps) DESC) AS rnk
          FROM customer_calls c CROSS JOIN resolution_playbooks p LIMIT 400)
 SELECT call_id, title AS recommended_playbook,
-    ai_query('databricks-meta-llama-3-3-70b-instruct',
+    from_json(ai_query('databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Is this playbook correct for this call? Call: ', transcript, ' | Playbook: ', steps),
-        responseFormat => schema_of_json('{"playbook_correct":false,"confidence":"string","alternative_action":"string"}')
-    ) AS validation
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"playbook_correct":{"type":"boolean"},"confidence":{"type":"string"},"alternative_action":{"type":"string"}}}}}'
+    ), 'playbook_correct BOOLEAN, confidence STRING, alternative_action STRING') AS validation
 FROM top WHERE rnk = 1 LIMIT 10;`,
   },
   mfg: {
@@ -213,10 +213,10 @@ top AS (SELECT m.log_id, m.technician_notes, d.mode, d.def,
         ROW_NUMBER() OVER (PARTITION BY m.log_id ORDER BY ai_similarity(m.technician_notes, d.def) DESC) AS rnk
         FROM maintenance_logs m CROSS JOIN defs d LIMIT 200)
 SELECT log_id, mode AS matched_failure_mode,
-    ai_query('databricks-meta-llama-3-3-70b-instruct',
+    from_json(ai_query('databricks-meta-llama-3-3-70b-instruct',
         CONCAT('Do these technician notes match this failure mode? Notes: ', technician_notes, ' | Mode: ', def),
-        responseFormat => schema_of_json('{"match_correct":false,"actual_failure_mode":"string","confidence":"string"}')
-    ) AS validation
+        responseFormat => '{"type":"json_schema","json_schema":{"name":"response","schema":{"type":"object","properties":{"match_correct":{"type":"boolean"},"actual_failure_mode":{"type":"string"},"confidence":{"type":"string"}}}}}'
+    ), 'match_correct BOOLEAN, actual_failure_mode STRING, confidence STRING') AS validation
 FROM top WHERE rnk = 1 LIMIT 10;`,
   },
 };

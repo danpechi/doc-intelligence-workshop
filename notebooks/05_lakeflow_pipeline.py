@@ -91,7 +91,7 @@ def silver_parsed():
         "filename",
         "file_size_bytes",
         "file_modified_at",
-        "ai_parse_document(content) AS parsed_text",
+        "CAST(ai_parse_document(content) AS STRING) AS parsed_text",
         "ingested_at",
         "current_timestamp() AS parsed_at",
     )
@@ -110,11 +110,11 @@ if industry == "fins":
     def silver_enriched_fins():
         return dlt.read_stream("silver_parsed").selectExpr(
             "path", "filename", "parsed_at",
-            f"""ai_query(
+            f"""from_json(ai_query(
                 '{endpoint}',
                 CONCAT('Extract financial product details from: ', parsed_text),
-                responseFormat => schema_of_json('{{"product_name":"string","product_type":"string","apr_low":0.0,"apr_high":0.0,"min_income_usd":0,"max_amount_usd":0}}')
-            ) AS extracted""",
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"product_name":{{"type":"string"}},"product_type":{{"type":"string"}},"apr_low":{{"type":"number"}},"apr_high":{{"type":"number"}},"min_income_usd":{{"type":"integer"}},"max_amount_usd":{{"type":"integer"}}}}}}}}}}'
+            ), 'product_name STRING, product_type STRING, apr_low DOUBLE, apr_high DOUBLE, min_income_usd BIGINT, max_amount_usd BIGINT') AS extracted""",
             f"""ai_classify(parsed_text, ARRAY('secured_loan','unsecured_loan','premium_credit_card','standard_credit_card','secured_card')) AS product_category""",
         )
 
@@ -127,11 +127,11 @@ elif industry == "gaming":
     def silver_enriched_gaming():
         return dlt.read_stream("silver_parsed").selectExpr(
             "path", "filename", "parsed_at",
-            f"""ai_query(
+            f"""from_json(ai_query(
                 '{endpoint}',
                 CONCAT('Analyze this player ban appeal: ', parsed_text),
-                responseFormat => schema_of_json('{{"player_id":"string","ban_reason":"string","appeal_credibility":"string","recommended_decision":"string","evidence_provided":false}}')
-            ) AS extracted""",
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"player_id":{{"type":"string"}},"ban_reason":{{"type":"string"}},"appeal_credibility":{{"type":"string"}},"recommended_decision":{{"type":"string"}},"evidence_provided":{{"type":"boolean"}}}}}}}}}}'
+            ), 'player_id STRING, ban_reason STRING, appeal_credibility STRING, recommended_decision STRING, evidence_provided BOOLEAN') AS extracted""",
             f"""ai_classify(parsed_text, ARRAY('grant_appeal','deny_appeal','escalate_for_review','insufficient_evidence')) AS decision_label""",
         )
 
@@ -145,11 +145,11 @@ elif industry == "dnb":
     def silver_enriched_dnb():
         return dlt.read_stream("silver_parsed").selectExpr(
             "path", "filename", "parsed_at",
-            f"""ai_query(
+            f"""from_json(ai_query(
                 '{endpoint}',
                 CONCAT('Score this prospect profile for Databricks fit: ', parsed_text),
-                responseFormat => schema_of_json('{{"company_name":"string","industry_sector":"string","funding_stage":"string","primary_pain_point":"string","databricks_fit_score":0}}')
-            ) AS extracted""",
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"company_name":{{"type":"string"}},"industry_sector":{{"type":"string"}},"funding_stage":{{"type":"string"}},"primary_pain_point":{{"type":"string"}},"databricks_fit_score":{{"type":"integer"}}}}}}}}}}'
+            ), 'company_name STRING, industry_sector STRING, funding_stage STRING, primary_pain_point STRING, databricks_fit_score BIGINT') AS extracted""",
             f"""ai_classify(parsed_text, ARRAY('hot_lead','warm_lead','cold_lead','not_qualified')) AS lead_quality""",
         )
 
@@ -162,11 +162,11 @@ elif industry == "telco":
     def silver_enriched_telco():
         return dlt.read_stream("silver_parsed").selectExpr(
             "path", "filename", "parsed_at",
-            f"""ai_query(
+            f"""from_json(ai_query(
                 '{endpoint}',
                 CONCAT('Extract NPS and sentiment from this survey: ', parsed_text),
-                responseFormat => schema_of_json('{{"customer_id":"string","nps_score":0,"nps_category":"string","issue_type":"string","follow_up_required":false}}')
-            ) AS extracted""",
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"customer_id":{{"type":"string"}},"nps_score":{{"type":"integer"}},"nps_category":{{"type":"string"}},"issue_type":{{"type":"string"}},"follow_up_required":{{"type":"boolean"}}}}}}}}}}'
+            ), 'customer_id STRING, nps_score BIGINT, nps_category STRING, issue_type STRING, follow_up_required BOOLEAN') AS extracted""",
             f"""ai_classify(parsed_text, ARRAY('promoter','passive','detractor')) AS nps_label""",
         )
 
@@ -180,11 +180,11 @@ elif industry == "mfg":
     def silver_enriched_mfg():
         return dlt.read_stream("silver_parsed").selectExpr(
             "path", "filename", "parsed_at",
-            f"""ai_query(
+            f"""from_json(ai_query(
                 '{endpoint}',
                 CONCAT('Extract root cause analysis from this inspection report: ', parsed_text),
-                responseFormat => schema_of_json('{{"report_id":"string","failure_mode":"string","severity":"string","component_batch_id":"string","root_cause":"string","supplier_involved":false,"downtime_hours":0.0}}')
-            ) AS extracted""",
+                responseFormat => '{{"type":"json_schema","json_schema":{{"name":"response","schema":{{"type":"object","properties":{{"report_id":{{"type":"string"}},"failure_mode":{{"type":"string"}},"severity":{{"type":"string"}},"component_batch_id":{{"type":"string"}},"root_cause":{{"type":"string"}},"supplier_involved":{{"type":"boolean"}},"downtime_hours":{{"type":"number"}}}}}}}}}}'
+            ), 'report_id STRING, failure_mode STRING, severity STRING, component_batch_id STRING, root_cause STRING, supplier_involved BOOLEAN, downtime_hours DOUBLE') AS extracted""",
             f"""ai_classify(parsed_text, ARRAY('critical_stop_production','major_schedule_maintenance','minor_monitor_only')) AS severity_action""",
         )
 
